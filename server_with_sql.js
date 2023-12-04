@@ -2,6 +2,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 
 const app = express();
 const port = 3000;
@@ -12,20 +13,23 @@ const db = new sqlite3.Database('./data.db', sqlite3.OPEN_READWRITE | sqlite3.OP
     console.log('Connected to the SQLite database.');
 });
 
-// 데이터베이스 테이블 생성
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS agencies (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    representative TEXT,
-    address TEXT,
-    contact TEXT,
-    UNIQUE(name, contact)
-  )`);
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        representative TEXT,
+        address TEXT,
+        contact TEXT,
+        url TEXT UNIQUE
+    )`);
 });
 
 // URL 및 CSS 선택자 설정
-const DATA_URL = '...'; // 데이터 URL
+// URL 및 CSS 선택자 설정
+//const DATA_URL = 'https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=37.02947300676534&lat2=37.08883776579578&lng1=126.97977012219125&lng2=127.09205018911555&map_level=6'; // [평택] 고덕, 신장, 서정, 장당 
+//const DATA_URL = 'https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=36.97599000786321&lat2=37.0352806369354&lng1=127.05871541104052&lng2=127.17097789435108&map_level=6'; // [평택] 비전동, 소사벌, 인근 전부 
+const DATA_URL = 'https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=36.78011754938916&lat2=36.83939535092694&lng1=127.07505545293552&lng2=127.18704334084441&map_level=6'; //천안 불당동 인접 15km
+
 const SELECTORS = {
     name: 'body > div.wrap > header > div > h1',
     representative: 'body > div.wrap > section > form > article > div.agency-info-cont > ul > li.agency-info-box__tit',
@@ -55,6 +59,19 @@ async function fetchHomePageLinks() {
 
 // 각 homepage URL에서 필요한 상세 정보를 추출하는 함수
 async function scrapeDetails(url) {
+    // URL이 이미 처리되었는지 확인
+    const exists = await new Promise((resolve, reject) => {
+        db.get("SELECT id FROM agencies WHERE url = ?", [url], (err, row) => {
+            if (err) reject(err);
+            resolve(!!row);
+        });
+    });
+
+    if (exists) {
+        console.log(`URL already processed: ${url}`);
+        return null; // 이미 처리된 URL이면 null 반환
+    }
+
     try {
         const response = await axios.get(url);
         const $ = cheerio.load(response.data);
@@ -62,12 +79,13 @@ async function scrapeDetails(url) {
             name: $(SELECTORS.name).text(),
             representative: $(SELECTORS.representative).text(),
             address: $(SELECTORS.address).text().replace(/지번주소/g, '').trim(),
-            contact: $(SELECTORS.contact).text().trim()
+            contact: $(SELECTORS.contact).text().trim(),
+            url: url // URL 항상 추가
         };
 
         // '010-'으로 시작하지 않는 연락처 제외
         if (!details.contact.startsWith('010-')) {
-            return null;
+            return details;
         }
 
         return details;
@@ -78,65 +96,56 @@ async function scrapeDetails(url) {
 }
 
 // 데이터베이스에 데이터 저장 함수
-function saveToDatabase(details) {
-    db.get("SELECT id FROM agencies WHERE name = ? AND contact = ?", [details.name, details.contact], (err, row) => {
-        if (err) {
-            console.error(err.message);
-        } else if (!row) {
-            db.run(`INSERT INTO agencies (name, representative, address, contact) VALUES (?, ?, ?, ?)`,
-                [details.name, details.representative, details.address, details.contact],
-                (err) => {
-                    if (err) {
-                        console.error(err.message);
-                    } else {
-                        console.log(`A row has been inserted with rowid ${this.lastID}`);
-                    }
-                });
-        } else {
-            console.log(`Duplicate found. Skipping insert.`);
-        }
+function saveToDatabase(details, currentUrlIndex, totalUrls) {
+    db.run(`INSERT INTO agencies (name, representative, address, contact, url) VALUES (?, ?, ?, ?, ?)`, 
+      [details.name, details.representative, details.address, details.contact, details.url], 
+      function(err) {
+          if (err) {
+              console.error(err.message);
+          } else {
+              console.log(`[${currentUrlIndex}/${totalUrls}] A row has been inserted with rowid ${this.lastID} \t Details:\tName: ${details.name}\tRepresentative: ${details.representative}\tAddress: ${details.address}\tContact: ${details.contact}\tURL: ${details.url}`);
+          }
     });
 }
 
-// 데이터를 HTML 테이블 형태로 변환하는 함수
-function createHtmlTable(data) {
-    let html = '<table border="1"><tr><th>순번</th><th>상호명</th><th>대표자</th><th>주소</th><th>연락처</th></tr>';
-    data.forEach((item, index) => {
-        html += `<tr>
-                <td>${index + 1}</td>
-                <td>${item.name}</td>
-                <td>${item.representative}</td>
-                <td>${item.address}</td>
-                <td>${item.contact}</td>
-             </tr>`;
-    });
-    html += '</table>';
-    return html;
-}
+app.use(express.static('public'));
 
-// express 웹 서버 설정
 app.get('/', (req, res) => {
-    let offset = req.query.offset ? parseInt(req.query.offset) : 0;
-    let limit = 100; // 한 페이지에 표시할 데이터 수
+    res.sendFile(path.join(__dirname, '/public/index.html'));
+});
+
+app.get('/data', (req, res) => {
+    let offset = req.query.start ? parseInt(req.query.start) : 0;
+    let limit = req.query.length ? parseInt(req.query.length) : 30;
 
     db.all(`SELECT * FROM agencies LIMIT ? OFFSET ?`, [limit, offset], (err, rows) => {
         if (err) {
             res.status(500).send('Server Error');
             console.error(err.message);
         } else {
-            res.send(createHtmlTable(rows));
+            res.json({ data: rows });
         }
     });
 });
 
 // 데이터 수집 및 저장 시작
 async function fetchAndScrape() {
-    const homepages = await fetchHomePageLinks();
-    for (const homepage of homepages) {
-        const details = await scrapeDetails(homepage);
-        if (details) {
-            saveToDatabase(details);
+    try {
+        const homepages = await fetchHomePageLinks();
+        const totalUrls = homepages.length;
+        let currentUrlIndex = 0;
+    
+        for (const homepage of homepages) {
+            currentUrlIndex++;
+            const details = await scrapeDetails(homepage);
+            if (details) {
+                saveToDatabase(details, currentUrlIndex, totalUrls);
+            }
         }
+    
+        console.log(`${currentUrlIndex}개의 데이터 처리가 완료되었습니다.`);
+    } catch (error) {
+        console.error('Error in fetchAndScrape:', error);
     }
 }
 
