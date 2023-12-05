@@ -25,10 +25,10 @@ db.serialize(() => {
 });
 
 // URL 및 CSS 선택자 설정
-// URL 및 CSS 선택자 설정
 //const DATA_URL = 'https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=37.02947300676534&lat2=37.08883776579578&lng1=126.97977012219125&lng2=127.09205018911555&map_level=6'; // [평택] 고덕, 신장, 서정, 장당 
 //const DATA_URL = 'https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=36.97599000786321&lat2=37.0352806369354&lng1=127.05871541104052&lng2=127.17097789435108&map_level=6'; // [평택] 비전동, 소사벌, 인근 전부 
-const DATA_URL = 'https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=36.78011754938916&lat2=36.83939535092694&lng1=127.07505545293552&lng2=127.18704334084441&map_level=6'; //천안 불당동 인접 15km
+//const DATA_URL = 'https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=36.78011754938916&lat2=36.83939535092694&lng1=127.07505545293552&lng2=127.18704334084441&map_level=6'; //천안 불당동 인접 5km
+const DATA_URL = 'https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=37.118878461588885&lat2=37.17821219231768&lng1=127.01136454334328&lng2=127.12380139567965&map_level=6'; //오산역 인근 5km
 
 const SELECTORS = {
     name: 'body > div.wrap > header > div > h1',
@@ -97,15 +97,15 @@ async function scrapeDetails(url) {
 
 // 데이터베이스에 데이터 저장 함수
 function saveToDatabase(details, currentUrlIndex, totalUrls) {
-    db.run(`INSERT INTO agencies (name, representative, address, contact, url) VALUES (?, ?, ?, ?, ?)`, 
-      [details.name, details.representative, details.address, details.contact, details.url], 
-      function(err) {
-          if (err) {
-              console.error(err.message);
-          } else {
-              console.log(`[${currentUrlIndex}/${totalUrls}] A row has been inserted with rowid ${this.lastID} \t Details:\tName: ${details.name}\tRepresentative: ${details.representative}\tAddress: ${details.address}\tContact: ${details.contact}\tURL: ${details.url}`);
-          }
-    });
+    db.run(`INSERT INTO agencies (name, representative, address, contact, url) VALUES (?, ?, ?, ?, ?)`,
+        [details.name, details.representative, details.address, details.contact, details.url],
+        function (err) {
+            if (err) {
+                console.error(err.message);
+            } else {
+                console.log(`[${currentUrlIndex}/${totalUrls}] A row has been inserted with rowid ${this.lastID} \t Details:\tName: ${details.name}\tRepresentative: ${details.representative}\tAddress: ${details.address}\tContact: ${details.contact}\tURL: ${details.url}`);
+            }
+        });
 }
 
 app.use(express.static('public'));
@@ -115,16 +115,48 @@ app.get('/', (req, res) => {
 });
 
 app.get('/data', (req, res) => {
-    let offset = req.query.start ? parseInt(req.query.start) : 0;
-    let limit = req.query.length ? parseInt(req.query.length) : 30;
+    const draw = req.query.draw ? parseInt(req.query.draw) : 0;
+    const start = req.query.start ? parseInt(req.query.start) : 0;
+    const length = req.query.length ? parseInt(req.query.length) : 10;
+    const searchValue = typeof req.query.search === 'object' && req.query.search !== null && 'value' in req.query.search
+        ? req.query.search.value
+        : '';
 
-    db.all(`SELECT * FROM agencies LIMIT ? OFFSET ?`, [limit, offset], (err, rows) => {
+    // 데이터 필터링을 위한 WHERE 절 구성
+    let whereClause = '';
+    if (searchValue) {
+        whereClause = `WHERE name LIKE '%${searchValue}%' OR representative LIKE '%${searchValue}%' OR address LIKE '%${searchValue}%' OR contact LIKE '%${searchValue}%'`;
+    }
+
+    // 전체 레코드 수
+    db.get(`SELECT COUNT(*) AS total FROM agencies`, [], (err, totalRow) => {
         if (err) {
             res.status(500).send('Server Error');
-            console.error(err.message);
-        } else {
-            res.json({ data: rows });
+            return console.error(err.message);
         }
+
+        // 필터링된 레코드 수
+        db.get(`SELECT COUNT(*) AS filteredTotal FROM agencies ${whereClause}`, [], (err, filteredTotalRow) => {
+            if (err) {
+                res.status(500).send('Server Error');
+                return console.error(err.message);
+            }
+
+            // 데이터 조회 쿼리
+            db.all(`SELECT * FROM agencies ${whereClause} LIMIT ? OFFSET ?`, [length, start], (err, rows) => {
+                if (err) {
+                    res.status(500).send('Server Error');
+                    console.error(err.message);
+                } else {
+                    res.json({
+                        "draw": draw,
+                        "recordsTotal": totalRow.total,
+                        "recordsFiltered": filteredTotalRow.filteredTotal,
+                        "data": rows
+                    });
+                }
+            });
+        });
     });
 });
 
@@ -134,7 +166,7 @@ async function fetchAndScrape() {
         const homepages = await fetchHomePageLinks();
         const totalUrls = homepages.length;
         let currentUrlIndex = 0;
-    
+
         for (const homepage of homepages) {
             currentUrlIndex++;
             const details = await scrapeDetails(homepage);
@@ -142,7 +174,7 @@ async function fetchAndScrape() {
                 saveToDatabase(details, currentUrlIndex, totalUrls);
             }
         }
-    
+
         console.log(`${currentUrlIndex}개의 데이터 처리가 완료되었습니다.`);
     } catch (error) {
         console.error('Error in fetchAndScrape:', error);
