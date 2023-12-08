@@ -38,9 +38,11 @@ const SELECTORS = {
 };
 
 // 주어진 URL에서 homepage 링크를 가져오는 함수
-async function fetchHomePageLinks() {
+async function fetchHomePageLinks(lat1, lat2, lng1, lng2) {
+    const url = `https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=${lat1}&lat2=${lat2}&lng1=${lng1}&lng2=${lng2}&map_level=6`;
+
     try {
-        const response = await axios.get(DATA_URL);
+        const response = await axios.get(url);
         const data = response.data;
         const regex = /homepage:"(http[^"]+)"/g;
         const homepages = [];
@@ -56,6 +58,36 @@ async function fetchHomePageLinks() {
         return [];
     }
 }
+
+// 데이터 수집 및 저장 시작
+app.get('/inputdata', async (req, res) => {
+    const { lat1, lat2, lng1, lng2 } = req.query;
+
+    if (!lat1 || !lat2 || !lng1 || !lng2) {
+        return res.status(400).send('Missing required query parameters: lat1, lat2, lng1, lng2');
+    }
+
+    try {
+        const homepages = await fetchHomePageLinks(lat1, lat2, lng1, lng2);
+        const totalUrls = homepages.length;
+        let currentUrlIndex = 0;
+
+        for (const homepage of homepages) {
+            currentUrlIndex++;
+            const details = await scrapeDetails(homepage);
+            if (details) {
+                saveToDatabase(details, currentUrlIndex, totalUrls);
+            }
+        }
+
+        console.log(`${currentUrlIndex}개의 데이터 처리가 완료되었습니다.`);
+        res.send(`${currentUrlIndex}개의 데이터 처리가 완료되었습니다.`);
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Server Error');
+    }
+});
+
 
 // 각 homepage URL에서 필요한 상세 정보를 추출하는 함수
 async function scrapeDetails(url) {
@@ -159,30 +191,6 @@ app.get('/data', (req, res) => {
         });
     });
 });
-
-// 데이터 수집 및 저장 시작
-async function fetchAndScrape() {
-    try {
-        const homepages = await fetchHomePageLinks();
-        const totalUrls = homepages.length;
-        let currentUrlIndex = 0;
-
-        for (const homepage of homepages) {
-            currentUrlIndex++;
-            const details = await scrapeDetails(homepage);
-            if (details) {
-                saveToDatabase(details, currentUrlIndex, totalUrls);
-            }
-        }
-
-        console.log(`${currentUrlIndex}개의 데이터 처리가 완료되었습니다.`);
-    } catch (error) {
-        console.error('Error in fetchAndScrape:', error);
-    }
-}
-
-// 데이터 수집 및 저장 시작
-fetchAndScrape();
 
 // 서버 시작
 app.listen(port, () => {
