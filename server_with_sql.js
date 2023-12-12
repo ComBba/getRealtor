@@ -192,6 +192,64 @@ app.get('/data', (req, res) => {
     });
 });
 
+app.get('/api/csv', async (req, res) => {
+    const { startId, endId, familyName } = req.query;
+
+    try {
+        // 데이터베이스에서 최소 및 최대 ID 조회
+        const rangeSql = 'SELECT MIN(id) as minId, MAX(id) as maxId FROM agencies';
+        const { minId, maxId } = await new Promise((resolve, reject) => {
+            db.get(rangeSql, (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        // 필수 매개변수가 누락된 경우 또는 범위가 잘못된 경우 안내 페이지 반환
+        if (!startId || !endId || !familyName || startId < minId || endId > maxId) {
+            return res.send(`
+                <html>
+                    <head><title>CSV Export Instructions</title></head>
+                    <body>
+                        <h2>CSV Export Instructions</h2>
+                        <p>To export data to a CSV file, please provide the following query parameters within the ID range of ${minId} to ${maxId}:</p>
+                        <ul>
+                            <li><b>startId</b>: Starting ID of the range (minimum: ${minId})</li>
+                            <li><b>endId</b>: Ending ID of the range (maximum: ${maxId})</li>
+                            <li><b>familyName</b>: Family name to be used in the CSV file</li>
+                        </ul>
+                        <p>Example: <code>/api/csv?startId=${minId}&endId=${maxId}&familyName=Smith</code></p>
+                    </body>
+                </html>
+            `);
+        }
+
+        // 데이터베이스에서 범위 내 데이터 조회 및 CSV 데이터 생성
+        const dataSql = 'SELECT * FROM agencies WHERE id BETWEEN ? AND ?';
+        db.all(dataSql, [startId, endId], (err, rows) => {
+            if (err) {
+                console.error(err.message);
+                return res.status(500).send('Server Error');
+            }
+
+            let csvData = 'Name,Given Name,Additional Name,Family Name,Yomi Name,Given Name Yomi,Additional Name Yomi,Family Name Yomi,Name Prefix,Name Suffix,Initials,Nickname,Short Name,Maiden Name,Birthday,Gender,Location,Billing Information,Directory Server,Mileage,Occupation,Hobby,Sensitivity,Priority,Subject,Notes,Language,Photo,Group Membership,Phone 1 - Type,Phone 1 - Value\n';
+            rows.forEach(row => {
+                const givenName = `${row.representative} ${row.name}`;
+                const name = `${familyName} H ${givenName}`;
+                const emptyFields = Array(28).join(','); // 28 empty fields
+                csvData += `${name},${givenName},,${familyName},H,,,,,,,,,,,,,,,,,,,,,,,,,* myContacts,,${row.contact}\n`;
+            });
+
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', 'attachment; filename="contacts.csv"');
+            res.send(csvData);
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Server Error');
+    }
+});
+
 // 서버 시작
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
