@@ -234,14 +234,17 @@ app.get('/api/csv', async (req, res) => {
 
             let csvData = 'Name,Given Name,Additional Name,Family Name,Yomi Name,Given Name Yomi,Additional Name Yomi,Family Name Yomi,Name Prefix,Name Suffix,Initials,Nickname,Short Name,Maiden Name,Birthday,Gender,Location,Billing Information,Directory Server,Mileage,Occupation,Hobby,Sensitivity,Priority,Subject,Notes,Language,Photo,Group Membership,Phone 1 - Type,Phone 1 - Value\n';
             rows.forEach(row => {
-                const givenName = `${row.representative} ${row.name}`;
-                const name = `${familyName} H ${givenName}`;
+                const givenName = `${row.name}${row.representative}`;
+                const name = `${familyName}H${givenName}`;
                 const emptyFields = Array(28).join(','); // 28 empty fields
-                csvData += `${name},${givenName},,${familyName},H,,,,,,,,,,,,,,,,,,,,,,,,,* myContacts,,${row.contact}\n`;
+                csvData += `${name},${givenName},,${familyName},H,,,,,,,,,,,,,,,,,,,,,,,,${familyName},,${row.contact}\n`;
             });
 
             res.setHeader('Content-Type', 'text/csv');
-            res.setHeader('Content-Disposition', 'attachment; filename="contacts.csv"');
+            const encodedFamilyName = encodeURIComponent(familyName);
+            const filename = `attachment; filename="contacts_${encodedFamilyName}_${startId}-${endId}.csv"`;
+            console.log("filename: ", filename); // 출력 예시: attachment; filename="contacts_Smith_1-100.csv")
+            res.setHeader('Content-Disposition', filename);
             res.send(csvData);
         });
     } catch (error) {
