@@ -84,17 +84,19 @@ async function fetchData() {
         //document.querySelector("#re_step1 > table > thead > tr:nth-child(2) > th:nth-child(5)")
         // 코스 이름 추출
         $("#re_step1 > table > thead > tr:nth-child(2) > th").each(function (index) {
-            if (index >= 0 && index < 5) { // 첫 번째 th는 제외하고 다섯 개의 코스만 고려
+            if (index >= 0 && index < 5) { 
                 const courseName = $(this).text().trim();
                 courseData[courseName] = [];
             }
         });
 
+        //document.querySelector("#re_step1 > table > tbody > tr > td:nth-child(1)")
+        //document.querySelector("#re_step1 > table > tbody > tr > td:nth-child(5)")
         // 각 코스별 시간 추출
         $("#re_step1 > table > tbody > tr").each(function () {
             $(this).find('td').each(function (tdIndex) {
                 if (tdIndex >= 0 && tdIndex < 5) { // 첫 번째 td는 제외하고 다섯 개의 코스만 고려
-                    const courseName = Object.keys(courseData)[tdIndex - 1];
+                    const courseName = Object.keys(courseData)[tdIndex];
                     $(this).find('ul > li').each(function () {
                         const timeText = $(this).text().trim();
                         const timeMatch = timeText.match(/^\d{2}:\d{2}/);
