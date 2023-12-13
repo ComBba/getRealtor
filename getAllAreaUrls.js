@@ -75,7 +75,7 @@ setInterval(() => {
     } else {
         console.log("모든 URL 처리 완료.");
     }
-}, 120000); // 120,000 밀리초 == 2분
+}, 60000); // 60,000 밀리초 == 1분
 
 // URL 생성 및 큐에 저장
 generateUrls(minLat, maxLat, minLng, maxLng, stepLat, stepLng);
