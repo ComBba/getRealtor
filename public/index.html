@@ -9,9 +9,6 @@
     <script type="text/javascript" charset="utf8" src="https://code.jquery.com/jquery-3.7.1.js"></script>
     <script type="text/javascript" charset="utf8"
         src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-    <script type="text/javascript" charset="utf8" src="https://code.jquery.com/jquery-3.7.0.js"></script>
-    <script type="text/javascript" charset="utf8"
-        src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script type="text/javascript" charset="utf8"
         src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
     <script type="text/javascript" charset="utf8"
@@ -27,6 +24,28 @@
 </head>
 
 <body>
+    <!-- URL 입력 폼 -->
+    <form id="url-input-form">
+        <label for="url-input">URL:</label>
+        <input type="text" id="url-input" name="url-input" placeholder="Enter full URL here" style="width: 500px;"><br>
+        <input type="submit" value="Parse URL">
+    </form>
+    <br>
+
+    <!-- 데이터 추출 폼 -->
+    <form id="data-fetch-form">
+        <label for="lat1">Latitude 1:</label>
+        <input type="text" id="lat1" name="lat1" placeholder="Latitude 1"><br>
+        <label for="lat2">Latitude 2:</label>
+        <input type="text" id="lat2" name="lat2" placeholder="Latitude 2"><br>
+        <label for="lng1">Longitude 1:</label>
+        <input type="text" id="lng1" name="lng1" placeholder="Longitude 1"><br>
+        <label for="lng2">Longitude 2:</label>
+        <input type="text" id="lng2" name="lng2" placeholder="Longitude 2"><br>
+        <input type="submit" value="Fetch Data">
+    </form>
+
+    <!-- 데이터 테이블 -->
     <table id="table_id" class="display">
         <thead>
             <tr>
@@ -60,9 +79,46 @@
                 ],
                 "pageLength": 10
             });
+
+            // URL 파싱 및 폼 필드 채우기
+            $('#url-input-form').on('submit', function (e) {
+                e.preventDefault();
+                var url = $('#url-input').val();
+                var urlParams = new URLSearchParams(new URL(url).search);
+
+                $('#lat1').val(urlParams.get('lat1'));
+                $('#lat2').val(urlParams.get('lat2'));
+                $('#lng1').val(urlParams.get('lng1'));
+                $('#lng2').val(urlParams.get('lng2'));
+            });
+
+            // 데이터 추출 폼 제출 이벤트 핸들러
+            $('#data-fetch-form').on('submit', function (e) {
+                e.preventDefault();
+
+                var lat1 = $('#lat1').val();
+                var lat2 = $('#lat2').val();
+                var lng1 = $('#lng1').val();
+                var lng2 = $('#lng2').val();
+
+                $.ajax({
+                    url: '/inputdata',
+                    type: 'GET',
+                    data: { lat1: lat1, lat2: lat2, lng1: lng1, lng2: lng2 },
+                    success: function (response) {
+                        alert('Data fetched successfully!\n' +
+                            'Processed: ' + response.processed + '\n' +
+                            'Added: ' + response.added + '\n' +
+                            'Skipped: ' + response.skipped);
+                        $('#table_id').DataTable().ajax.reload();
+                    },
+                    error: function () {
+                        alert('Error fetching data');
+                    }
+                });
+            });
         });
     </script>
-
 </body>
 
 </html>

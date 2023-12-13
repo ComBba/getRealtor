@@ -69,25 +69,31 @@ app.get('/inputdata', async (req, res) => {
 
     try {
         const homepages = await fetchHomePageLinks(lat1, lat2, lng1, lng2);
-        const totalUrls = homepages.length;
-        let currentUrlIndex = 0;
+        let processedCount = 0, skippedCount = 0, addedCount = 0;
 
         for (const homepage of homepages) {
-            currentUrlIndex++;
             const details = await scrapeDetails(homepage);
             if (details) {
-                saveToDatabase(details, currentUrlIndex, totalUrls);
+                processedCount++;
+                if (await saveToDatabase(details)) {
+                    addedCount++;
+                } else {
+                    skippedCount++;
+                }
             }
         }
 
-        console.log(`${currentUrlIndex}개의 데이터 처리가 완료되었습니다.`);
-        res.send(`${currentUrlIndex}개의 데이터 처리가 완료되었습니다.`);
+        res.json({
+            message: 'Data processing completed',
+            processed: processedCount,
+            skipped: skippedCount,
+            added: addedCount
+        });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Server Error');
     }
 });
-
 
 // 각 homepage URL에서 필요한 상세 정보를 추출하는 함수
 async function scrapeDetails(url) {
@@ -128,16 +134,23 @@ async function scrapeDetails(url) {
 }
 
 // 데이터베이스에 데이터 저장 함수
-function saveToDatabase(details, currentUrlIndex, totalUrls) {
-    db.run(`INSERT INTO agencies (name, representative, address, contact, url) VALUES (?, ?, ?, ?, ?)`,
-        [details.name, details.representative, details.address, details.contact, details.url],
-        function (err) {
-            if (err) {
-                console.error(err.message);
-            } else {
-                console.log(`[${currentUrlIndex}/${totalUrls}] A row has been inserted with rowid ${this.lastID} \t Details:\tName: ${details.name}\tRepresentative: ${details.representative}\tAddress: ${details.address}\tContact: ${details.contact}\tURL: ${details.url}`);
+async function saveToDatabase(details) {
+    return new Promise((resolve, reject) => {
+        db.run(`INSERT INTO agencies (name, representative, address, contact, url) VALUES (?, ?, ?, ?, ?)`,
+            [details.name, details.representative, details.address, details.contact, details.url],
+            function (err) {
+                if (err) {
+                    if (err.message.includes('UNIQUE constraint failed')) {
+                        resolve(false); // 데이터가 중복되어 스킵됨
+                    } else {
+                        reject(err);
+                    }
+                } else {
+                    resolve(true); // 데이터가 추가됨
+                }
             }
-        });
+        );
+    });
 }
 
 app.use(express.static('public'));
