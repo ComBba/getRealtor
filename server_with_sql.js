@@ -90,6 +90,7 @@ app.get('/inputdata', async (req, res) => {
             }
         }
 
+        console.log(`Processed ${processedCount} homepages, skipped ${skippedCount} and added ${addedCount} agencies to the database.`);
         res.json({
             message: 'Data processing completed',
             processed: processedCount,
@@ -153,6 +154,7 @@ async function saveToDatabase(details) {
                         reject(err);
                     }
                 } else {
+                    console.log(`[ Data saved ] ${details.name}, ${details.representative}, ${details.contact}, ${details.url}`);
                     resolve(true); // 데이터가 추가됨
                 }
             }
@@ -252,18 +254,18 @@ app.get('/api/csv', async (req, res) => {
                 return res.status(500).send('Server Error');
             }
 
-            let csvData = 'Name,Given Name,Additional Name,Family Name,Yomi Name,Given Name Yomi,Additional Name Yomi,Family Name Yomi,Name Prefix,Name Suffix,Initials,Nickname,Short Name,Maiden Name,Birthday,Gender,Location,Billing Information,Directory Server,Mileage,Occupation,Hobby,Sensitivity,Priority,Subject,Notes,Language,Photo,Group Membership,Phone 1 - Type,Phone 1 - Value\n';
+            let csvData = 'Name,GivenName,AdditionalName,FamilyName,YomiName,GivenNameYomi,AdditionalNameYomi,FamilyNameYomi,NamePrefix,NameSuffix,Initials,Nickname,ShortName,MaidenName,Birthday,Gender,Location,BillingInformation,DirectoryServer,Mileage,Occupation,Hobby,Sensitivity,Priority,Subject,Notes,Language,Photo,GroupMembership,Phone1-Type,Phone1-Value\n';
             rows.forEach(row => {
-                const givenName = `${row.name}${row.representative}`;
-                const name = `${familyName}H${givenName}`;
-                const emptyFields = Array(28).join(','); // 28 empty fields
-                csvData += `${name},${givenName},,${familyName},H,,,,,,,,,,,,,,,,,,,,,,,,${familyName},,${row.contact}\n`;
+                const givenName = `${row.name}${row.representative}`.replace(/\s/g, '');
+                const name = `${familyName}H${givenName}`.replace(/\s/g, '');
+                const emptyFields = Array(28).fill('').join(',');
+                const contact = row.contact.replace(/\s/g, '');
+                csvData += `${name},${givenName},,,${familyName}H,,,,,,,,,,,,,,,,,,,,,,,,${familyName},,${contact}\n`;
             });
 
             res.setHeader('Content-Type', 'text/csv');
             const encodedFamilyName = encodeURIComponent(familyName);
             const filename = `attachment; filename="contacts_${encodedFamilyName}_${startId}-${endId}.csv"`;
-            console.log("filename: ", filename); // 출력 예시: attachment; filename="contacts_Smith_1-100.csv")
             res.setHeader('Content-Disposition', filename);
             res.send(csvData);
         });
