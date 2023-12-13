@@ -66,11 +66,16 @@ const generateUrls = (minLat, maxLat, minLng, maxLng, stepLat, stepLng) => {
     console.log("URL 생성 완료. 총 URL 개수:", urlQueue.length);
 };
 
-// 2분마다 URL 요청 보내기
+// URL 처리 상태 표시를 위한 변수
+let totalUrls = urlQueue.length;
+let processedUrls = 0;
+
+// 1분마다 URL 요청 보내기
 setInterval(() => {
     if (urlQueue.length > 0) {
         const url = urlQueue.shift(); // 큐에서 URL 하나를 꺼냄
-        console.log("Sending request to:", url);
+        processedUrls++;
+        console.log(`[${processedUrls}/${totalUrls}] Sending request to: ${url}`);
         sendRequest(url);
     } else {
         console.log("모든 URL 처리 완료.");
