@@ -41,8 +41,15 @@ const SELECTORS = {
 async function fetchHomePageLinks(lat1, lat2, lng1, lng2) {
     const url = `https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=${lat1}&lat2=${lat2}&lng1=${lng1}&lng2=${lng2}&map_level=6`;
 
+    const axiosConfig = {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
+            'Referer': 'https://www.serve.co.kr/map_new/index.asp?law_dnameno=4122000000&goodtype_code=1'
+        }
+    };
+
     try {
-        const response = await axios.get(url);
+        const response = await axios.get(url, axiosConfig);
         const data = response.data;
         const regex = /homepage:"(http[^"]+)"/g;
         const homepages = [];
