@@ -31,10 +31,10 @@ const bottomLeft = getCoordinateRange(bottomLeftUrl);
 const bottomRight = getCoordinateRange(bottomRightUrl);
 
 // 전체 지역의 최소 및 최대 위도, 경도 값 계산
-const minLat = Math.min(topLeft.lat2, topRight.lat2, bottomLeft.lat2, bottomRight.lat2);
-const maxLat = Math.max(topLeft.lat1, topRight.lat1, bottomLeft.lat1, bottomRight.lat1);
-const minLng = Math.min(topLeft.lng1, topRight.lng1, bottomLeft.lng1, bottomRight.lng1);
-const maxLng = Math.max(topLeft.lng2, topRight.lng2, bottomLeft.lng2, bottomRight.lng2);
+const minLat = Math.min(topLeft.lat1, topRight.lat1, bottomLeft.lat1, bottomRight.lat1, topLeft.lat2, topRight.lat2, bottomLeft.lat2, bottomRight.lat2);
+const maxLat = Math.max(topLeft.lat1, topRight.lat1, bottomLeft.lat1, bottomRight.lat1, topLeft.lat2, topRight.lat2, bottomLeft.lat2, bottomRight.lat2);
+const minLng = Math.min(topLeft.lng1, topRight.lng1, bottomLeft.lng1, bottomRight.lng1, topLeft.lng2, topRight.lng2, bottomLeft.lng2, bottomRight.lng2);
+const maxLng = Math.max(topLeft.lng1, topRight.lng1, bottomLeft.lng1, bottomRight.lng1, topLeft.lng2, topRight.lng2, bottomLeft.lng2, bottomRight.lng2);
 
 // 절대값을 사용하여 단계 계산
 const stepLat = 0.05521467008009;
@@ -74,10 +74,10 @@ const sendRequest = async (url) => {
 
 // URL 생성 함수
 const generateUrls = (minLat, maxLat, minLng, maxLng, stepLat, stepLng) => {
-    for (let lat = maxLat; lat > minLat; lat -= stepLat) {
+    for (let lat = minLat; lat < maxLat; lat += stepLat) {
         for (let lng = minLng; lng < maxLng; lng += stepLng) {
-            let lat2 = Math.max(lat - stepLat, minLat);
-            let lng2 = Math.min(lng + stepLng, maxLng);
+            let lat2 = lat + (topLeft.lat2 - topLeft.lat1);
+            let lng2 = lng + (topLeft.lng2 - topLeft.lng1);
             let dataUrl = `http://localhost:3000/inputdata?lat1=${lat}&lat2=${lat2}&lng1=${lng}&lng2=${lng2}`;
             urlQueue.push(dataUrl); // URL을 큐에 추가
         }
