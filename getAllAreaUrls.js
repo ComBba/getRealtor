@@ -1,5 +1,13 @@
 const axios = require('axios');
 
+
+// URL 큐 생성
+const urlQueue = [];
+
+// URL 처리 상태 표시를 위한 변수
+let totalUrls = 0;
+let processedUrls = 1;
+
 // Define the coordinates of the four corners
 const topLeftUrl = "https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=37.72323943557199&lat2=37.78288884527683&lng1=126.52385262394026&lng2=126.63680707556247&map_level=6";
 const topRightUrl = "https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=37.86220887888556&lat2=37.9196986198796&lng1=128.734433861587&lng2=128.84931701308585&map_level=6";
@@ -29,8 +37,8 @@ const minLng = Math.min(topLeft.lng1, topRight.lng1, bottomLeft.lng1, bottomRigh
 const maxLng = Math.max(topLeft.lng2, topRight.lng2, bottomLeft.lng2, bottomRight.lng2);
 
 // 절대값을 사용하여 단계 계산
-const stepLat = Math.abs(topLeft.lat1 - topLeft.lat2); // 영역의 평균 높이를 단계로 사용
-const stepLng = Math.abs(topLeft.lng2 - topLeft.lng1); // 영역의 평균 너비를 단계로 사용
+const stepLat = 0.05521467008009;
+const stepLng = 0.10657609410838;
 
 console.log("최소 위도:", minLat);
 console.log("최대 위도:", maxLat);
@@ -40,22 +48,29 @@ console.log("단계 위도:", stepLat);
 console.log("단계 경도:", stepLng);
 console.log("URL 생성 중...");
 
-// URL 생성 및 요청 보내기 함수
+// URL을 랜덤하게 꺼내는 함수
+const getRandomUrl = () => {
+    const randomIndex = Math.floor(Math.random() * urlQueue.length);
+    console.log("[randomIndex]", randomIndex, "\t[totalUrls]", totalUrls);
+    return urlQueue.splice(randomIndex, 1)[0];
+};
+
+// URL 요청 및 대기 시간 처리 함수
 const sendRequest = async (url) => {
     try {
         const response = await axios.get(url);
-        //console.log(`Request to ${url} successful. Status: ${response.status}`);
+        const addedCount = response.data.added;
+        const processedCount = response.data.processed;
+        const skippedCount = response.data.skipped;
+        console.log("[", processedUrls, "/", totalUrls, "] Request to", url, "successful.Added: ", addedCount, "skippedCount:", skippedCount, "processedCount:", processedCount);
+
+        // 대기 시간 계산 및 적용
+        let waitTime = addedCount > 0 ? addedCount * 1000 : 10000; // 추가된 데이터 수 * 1초 또는 최소 10초
+        await new Promise(resolve => setTimeout(resolve, waitTime));
     } catch (error) {
-        console.error(`Error making request to ${url}:`, error);
+        console.error(`[${processedUrls}/${totalUrls}] Error making request to ${url}:`, error);
     }
 };
-
-// URL 큐 생성
-const urlQueue = [];
-
-// URL 처리 상태 표시를 위한 변수
-let totalUrls = 0;
-let processedUrls = 1;
 
 // URL 생성 함수
 const generateUrls = (minLat, maxLat, minLng, maxLng, stepLat, stepLng) => {
@@ -71,21 +86,25 @@ const generateUrls = (minLat, maxLat, minLng, maxLng, stepLat, stepLng) => {
     console.log("URL 생성 완료. 총 URL 개수:", totalUrls);
 };
 
-// 1분마다 URL 요청 보내기
+// URL 요청 로직
 setInterval(() => {
     if (urlQueue.length > 0) {
-        const url = urlQueue.shift(); // 큐에서 URL 하나를 꺼냄
+        const url = getRandomUrl(); // 랜덤 URL 추출
         processedUrls++;
-        console.log("[", processedUrls, "/", totalUrls, "]", url);
+        //console.log(`[${processedUrls}/${totalUrls}] Sending request to: ${url}`);
         sendRequest(url);
     } else {
         console.log("모든 URL 처리 완료.");
     }
-}, 60000); // 60,000 밀리초 == 1분
+}, 10000); // 10초 간격
 
 // URL 생성 및 큐에 저장
 generateUrls(minLat, maxLat, minLng, maxLng, stepLat, stepLng);
 
-const url = urlQueue.shift(); // 큐에서 URL 하나를 꺼냄
-console.log("[", processedUrls, "/", totalUrls, "]", url);
-sendRequest(url);
+// 첫 번째 URL 요청
+if (urlQueue.length > 0) {
+    const url = getRandomUrl();
+    //const url ="http://localhost:3000/inputdata?lat1=37.52267862370599&lat2=37.581728389111795&lng1=127.15188002553454&lng2=127.26503169171971";
+    //console.log(`[${processedUrls}/${totalUrls}] Sending request to: ${url}`);
+    sendRequest(url);
+}

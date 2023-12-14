@@ -79,14 +79,16 @@ app.get('/inputdata', async (req, res) => {
         let processedCount = 0, skippedCount = 0, addedCount = 0;
 
         for (const homepage of homepages) {
+            processedCount++;
             const details = await scrapeDetails(homepage);
             if (details) {
-                processedCount++;
                 if (await saveToDatabase(details)) {
                     addedCount++;
                 } else {
                     skippedCount++;
                 }
+            } else {
+                skippedCount++;
             }
         }
 
