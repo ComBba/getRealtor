@@ -44,7 +44,7 @@ console.log("URL 생성 중...");
 const sendRequest = async (url) => {
     try {
         const response = await axios.get(url);
-        console.log(`Request to ${url} successful. Status: ${response.status}`);
+        //console.log(`Request to ${url} successful. Status: ${response.status}`);
     } catch (error) {
         console.error(`Error making request to ${url}:`, error);
     }
@@ -52,6 +52,10 @@ const sendRequest = async (url) => {
 
 // URL 큐 생성
 const urlQueue = [];
+
+// URL 처리 상태 표시를 위한 변수
+let totalUrls = 0;
+let processedUrls = 1;
 
 // URL 생성 함수
 const generateUrls = (minLat, maxLat, minLng, maxLng, stepLat, stepLng) => {
@@ -63,19 +67,16 @@ const generateUrls = (minLat, maxLat, minLng, maxLng, stepLat, stepLng) => {
             urlQueue.push(dataUrl); // URL을 큐에 추가
         }
     }
-    console.log("URL 생성 완료. 총 URL 개수:", urlQueue.length);
+    totalUrls = urlQueue.length; // 총 URL 개수 설정
+    console.log("URL 생성 완료. 총 URL 개수:", totalUrls);
 };
-
-// URL 처리 상태 표시를 위한 변수
-let totalUrls = urlQueue.length;
-let processedUrls = 0;
 
 // 1분마다 URL 요청 보내기
 setInterval(() => {
     if (urlQueue.length > 0) {
         const url = urlQueue.shift(); // 큐에서 URL 하나를 꺼냄
         processedUrls++;
-        console.log(`[${processedUrls}/${totalUrls}] Sending request to: ${url}`);
+        console.log("[", processedUrls, "/", totalUrls, "]", url);
         sendRequest(url);
     } else {
         console.log("모든 URL 처리 완료.");
@@ -86,5 +87,5 @@ setInterval(() => {
 generateUrls(minLat, maxLat, minLng, maxLng, stepLat, stepLng);
 
 const url = urlQueue.shift(); // 큐에서 URL 하나를 꺼냄
-console.log("Sending request to:", url);
+console.log("[", processedUrls, "/", totalUrls, "]", url);
 sendRequest(url);
