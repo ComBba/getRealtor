@@ -25,11 +25,6 @@ db.serialize(() => {
 });
 
 // URL 및 CSS 선택자 설정
-//const DATA_URL = 'https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=37.02947300676534&lat2=37.08883776579578&lng1=126.97977012219125&lng2=127.09205018911555&map_level=6'; // [평택] 고덕, 신장, 서정, 장당 
-//const DATA_URL = 'https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=36.97599000786321&lat2=37.0352806369354&lng1=127.05871541104052&lng2=127.17097789435108&map_level=6'; // [평택] 비전동, 소사벌, 인근 전부 
-//const DATA_URL = 'https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=36.78011754938916&lat2=36.83939535092694&lng1=127.07505545293552&lng2=127.18704334084441&map_level=6'; //천안 불당동 인접 5km
-const DATA_URL = 'https://www.serve.co.kr/map_new/data/get_map_agency.asp?lat1=37.118878461588885&lat2=37.17821219231768&lng1=127.01136454334328&lng2=127.12380139567965&map_level=6'; //오산역 인근 5km
-
 const SELECTORS = {
     name: 'body > div.wrap > header > div > h1',
     representative: 'body > div.wrap > section > form > article > div.agency-info-cont > ul > li.agency-info-box__tit',
@@ -133,9 +128,8 @@ async function scrapeDetails(url) {
 
         // '010-'으로 시작하지 않는 연락처 제외
         if (!details.contact.startsWith('010-')) {
-            return details;
+            return null;
         }
-
         return details;
     } catch (error) {
         console.error('Error scraping details:', error);
