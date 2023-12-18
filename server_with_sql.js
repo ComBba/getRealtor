@@ -5,7 +5,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 const app = express();
-const port = 3000;
+const port = 7140;
 const db = new sqlite3.Database('./data.db', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
     if (err) {
         console.error(err.message);
@@ -256,7 +256,8 @@ app.get('/api/csv', async (req, res) => {
                 const name = `${familyName}H${givenName}`.replace(/\s/g, '');
                 const emptyFields = Array(28).fill('').join(',');
                 const contact = row.contact.replace(/\s/g, '');
-                csvData += `${name},${givenName},,,${familyName}H,,,,,,,,,,,,,,,,,,,,,,,,${familyName},,${contact}\n`;
+                const address = row.address;
+                csvData += `${name},${givenName},,,${familyName}H,,,,,,,,,,,,${address},,,,,,,,,,,,${familyName},,${contact}\n`;
             });
 
             res.setHeader('Content-Type', 'text/csv');
