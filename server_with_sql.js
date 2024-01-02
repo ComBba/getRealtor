@@ -252,12 +252,16 @@ app.get('/api/csv', async (req, res) => {
 
             let csvData = 'Name,GivenName,AdditionalName,FamilyName,YomiName,GivenNameYomi,AdditionalNameYomi,FamilyNameYomi,NamePrefix,NameSuffix,Initials,Nickname,ShortName,MaidenName,Birthday,Gender,Location,BillingInformation,DirectoryServer,Mileage,Occupation,Hobby,Sensitivity,Priority,Subject,Notes,Language,Photo,GroupMembership,Phone1-Type,Phone1-Value\n';
             rows.forEach(row => {
-                const givenName = `${row.name}${row.representative}`.replace(/\s/g, '');
+                // 쉼표 제거 또는 대체
+                const cleanedName = row.name.replace(/,/g, ''); // 쉼표 제거
+                const cleanedAddress = row.address.replace(/,/g, ''); // 쉼표 제거
+
+                const givenName = `${cleanedName}${row.representative}`.replace(/\s/g, '');
                 const name = `${familyName}H${givenName}`.replace(/\s/g, '');
                 const emptyFields = Array(28).fill('').join(',');
                 const contact = row.contact.replace(/\s/g, '');
-                const address = row.address;
-                csvData += `${name},${givenName},,,${familyName}H,,,,,,,,,,,,${address},,,,,,,,,,,,${familyName},,${contact}\n`;
+
+                csvData += `${name},${givenName},,,${familyName}H,,,,,,,,,,,,${cleanedAddress},,,,,,,,,,,,${familyName},,${contact}\n`;
             });
 
             res.setHeader('Content-Type', 'text/csv');
