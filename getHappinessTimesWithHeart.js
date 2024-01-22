@@ -130,10 +130,20 @@ app.post('/login', async (req, res) => {
     try {
         await login(username, password);
         const data = await fetchData();
+        
+        let tableHtml = '<table border="1"><tr><th>Course Name</th><th>Times</th></tr>';
+
+        for (const [courseName, times] of Object.entries(data.courseData)) {
+            tableHtml += `<tr><td>${courseName}</td><td>${times.join(', ')}</td></tr>`;
+        }
+
+        tableHtml += '</table>';
+
         res.send(`
             <h1>로그인 성공</h1>
+            <p>${data.todayInfo}</p>
             <p>추출된 데이터:</p>
-            <pre>${JSON.stringify(data, null, 2)}</pre>
+            ${tableHtml}
             <a href="/">돌아가기</a>
         `);
     } catch (error) {
