@@ -122,6 +122,14 @@ app.get('/', (req, res) => {
         timeOptions += `<option value="${formattedTime}">${formattedTime}</option>`;
     }
 
+    let courseOptions = `
+        <option value="Human">Human</option>
+        <option value="Happy">Happy</option>
+        <option value="Heart">Heart</option>
+        <option value="Hidden">Hidden</option>
+        <option value="Healing">Healing</option>
+    `;
+
     res.send(`
         <form action="/login" method="post">
             <input type="text" name="username" placeholder="Username" required />
@@ -130,13 +138,17 @@ app.get('/', (req, res) => {
                 <option value="">시간 선택</option>
                 ${timeOptions}
             </select>
+            <select name="courseSelection" required>
+                <option value="">코스 선택</option>
+                ${courseOptions}
+            </select>
             <button type="submit">Login</button>
         </form>
     `);
 });
 
 app.post('/login', async (req, res) => {
-    const { username, password, highlightTime } = req.body;
+    const { username, password, highlightTime, courseSelection } = req.body;
     try {
         await login(username, password);
         const data = await fetchData();
@@ -144,19 +156,17 @@ app.post('/login', async (req, res) => {
         let tableHtml = '<table border="1"><tr><th>Course Name</th><th>Times</th></tr>';
 
         for (const [courseName, times] of Object.entries(data.courseData)) {
+            let courseStyle = (courseName === courseSelection) ? ' style="font-weight:bold; color:blue;"' : '';
+
             let timesHtml = times.map(time => {
-                if (time.startsWith(highlightTime)) {
-                    return `<span style="font-weight:bold; color:blue;">${time}</span>`;
-                } else {
-                    return time;
-                }
+                let timeStyle = time.startsWith(highlightTime) ? ' style="font-weight:bold; color:blue;"' : '';
+                return `<span${timeStyle}>${time}</span>`;
             }).join(', ');
 
-            tableHtml += `<tr><td>${courseName}</td><td>${timesHtml}</td></tr>`;
+            tableHtml += `<tr><td${courseStyle}>${courseName}</td><td>${timesHtml}</td></tr>`;
         }
 
         tableHtml += '</table>';
-
         res.send(`
             <h1>로그인 성공</h1>
             <p>${data.todayInfo}</p>
