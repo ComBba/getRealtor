@@ -116,25 +116,43 @@ async function fetchData() {
 }
 
 app.get('/', (req, res) => {
+    let timeOptions = '';
+    for (let i = 6; i <= 15; i++) {
+        let formattedTime = i.toString().padStart(2, '0');
+        timeOptions += `<option value="${formattedTime}">${formattedTime}</option>`;
+    }
+
     res.send(`
         <form action="/login" method="post">
             <input type="text" name="username" placeholder="Username" required />
             <input type="password" name="password" placeholder="Password" required />
+            <select name="highlightTime" required>
+                <option value="">시간 선택</option>
+                ${timeOptions}
+            </select>
             <button type="submit">Login</button>
         </form>
     `);
 });
 
 app.post('/login', async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, highlightTime } = req.body;
     try {
         await login(username, password);
         const data = await fetchData();
-        
+
         let tableHtml = '<table border="1"><tr><th>Course Name</th><th>Times</th></tr>';
 
         for (const [courseName, times] of Object.entries(data.courseData)) {
-            tableHtml += `<tr><td>${courseName}</td><td>${times.join(', ')}</td></tr>`;
+            let timesHtml = times.map(time => {
+                if (time.startsWith(highlightTime)) {
+                    return `<span style="font-weight:bold; color:blue;">${time}</span>`;
+                } else {
+                    return time;
+                }
+            }).join(', ');
+
+            tableHtml += `<tr><td>${courseName}</td><td>${timesHtml}</td></tr>`;
         }
 
         tableHtml += '</table>';
